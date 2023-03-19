@@ -15,96 +15,91 @@ const config = {
     update: update,
   },
 };
+let game = new Phaser.Game(config);
 
-const game = new Phaser.Game(config);
+let player;
+let cursors;
 
-function preload() {
-    this.load.spritesheet("dude", "assets/dude.png", {
-        frameWidth: 32,
-        frameHeight: 48,
-    });
+let enemies;
+let enemyInterval;
 
-  this.load.image("enemy", "assets/star.png");
-  this.load.image("bomb", "assets/bomb.png");
-}
-
-let hero;
-let heroSpeed = 200;
 let bullets;
 
 
-function create() {
-    hero = this.physics.add.sprite(400, 300, 'dude');
-  
-    enemies = this.physics.add.group();
-    bullets = this.physics.add.group();
-    for (let i = 0; i < 10; i++) {
-      let enemy = enemies.create(
-        Phaser.Math.Between(0, 800),
-        Phaser.Math.Between(0, 600),
-        'enemy'
-      );
-      enemy.setCollideWorldBounds(true);
-    }
-    
-    
-  this.physics.add.collider(hero, enemies, () => {
-    hero.destroy();
+function preload() {
+    this.load.image("sky", "assets/sky.png");
+  this.load.spritesheet("dude", "assets/dude.png", {
+    frameWidth: 32,
+    frameHeight: 48,
   });
 
-   // Add input controls
-   cursors = this.input.keyboard.createCursorKeys();
-   fireButton = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+  this.load.image("bullet", "assets/bomb.png");
+  this.load.image("enemy", "assets/star.png");
+}
+
+function create() {
+
+    this.add.image(400, 300, "sky");
+  player = this.physics.add.sprite(100, 450, "dude");
+  player.setCollideWorldBounds(true);
+  cursors = this.input.keyboard.createCursorKeys();
+
+  enemies = this.physics.add.group();
+
+  enemyInterval = this.time.addEvent({
+    delay: 1000,
+    callback: spawnEnemy,
+    loop: true,
+  });
+
+  bullets = this.physics.add.group();
+  
+  this.input.on("pointerdown", shoot);
+  this.input.keyboard.on("keydown-SPACE", shoot);
+
+}
+
+function shoot(pointer) {
+    const bullet = bullets.create(player.x, player.y, "bullet");
+    const angle = Phaser.Math.Angle.Between(player.x, player.y, pointer.x, pointer.y);
+    const velocity = new Phaser.Math.Vector2(Math.cos(angle), Math.sin(angle)).scale(400);
+    bullet.setVelocity(velocity.x, velocity.y);
+  }
+  
+function spawnEnemy() {
+    const enemy = enemies.create(
+      Phaser.Math.Between(0, config.width),
+      Phaser.Math.Between(0, config.height),
+      "enemy"
+    );
+    enemy.setVelocity(
+      Phaser.Math.Between(-200, 200),
+      Phaser.Math.Between(-200, 200)
+    );
+  }
   
 
-}
-
 function update() {
+    this.physics.overlap(bullets, enemies, hitEnemy);
 
-    enemies.getChildren().forEach((enemy) => {
-        enemy.setVelocity(
-          Phaser.Math.Between(-200, 200),
-          Phaser.Math.Between(-200, 200)
-        );
-      });
-
-      // Move the player
-  if (cursors.left.isDown) {
-    hero.setVelocityX(-200);
-  } else if (cursors.right.isDown) {
-    hero.setVelocityX(200);
-  } else {
-    hero.setVelocityX(0);
-  }
-  if (cursors.up.isDown) {
-    hero.setVelocityY(-200);
-  } else if (cursors.down.isDown) {
-    hero.setVelocityY(200);
-  } else {
-    hero.setVelocityY(0);
-  }
-
-  // Fire a bullet
-  if (fireButton.isDown) {
-    let bullet = bullets.create(hero.x, hero.y, 'bomb');
-    bullet.setVelocityY(-400);
-  }
-
-      
+    if (cursors.left.isDown) {
+        player.setVelocityX(-160);
+      } else if (cursors.right.isDown) {
+        player.setVelocityX(160);
+      } else {
+        player.setVelocityX(0);
+      }
+    
+      if (cursors.up.isDown) {
+        player.setVelocityY(-160);
+      } else if (cursors.down.isDown) {
+        player.setVelocityY(160);
+      } else {
+        player.setVelocityY(0);
+      }
 }
 
-function attack() {
-    let closestEnemy = enemies.getClosest(hero);
-    if (closestEnemy && Phaser.Math.Distance.Between(hero.x, hero.y, closestEnemy.x, closestEnemy.y) < 50) {
-      killEnemy(closestEnemy);
-    }
-  }
-
-function killEnemy(enemy) {
-    enemy.disableBody(true, true);
-    if (enemies.countActive() === 0) {
-      // Spawn boss
-
-      alert('BOSS TIME')
-    }
+function hitEnemy(bullet, enemy) {
+    bullet.destroy();
+    enemy.destroy();
   }
